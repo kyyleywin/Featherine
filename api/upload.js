@@ -1,50 +1,37 @@
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
-
-import formidable from "formidable";
-import fs from "fs";
+import FormData from "form-data";
 import fetch from "node-fetch";
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
-
-  const form = new formidable.IncomingForm();
-
-  form.parse(req, async (err, fields, files) => {
-    if (err) {
-      return res.status(500).json({ error: "Failed parsing form" });
-    }
-
-    const file = files.image;
-
     try {
-      const buffer = fs.readFileSync(file.filepath);
+        const { file } = req.body;
 
-      const formData = new FormData();
-      formData.append("file", new Blob([buffer]), file.originalFilename);
+        if (!file) {
+            return res.status(400).json({ error: "No file received" });
+        }
 
-      const upload = await fetch("https://telegra.ph/upload", {
-        method: "POST",
-        body: formData
-      });
+        // convert base64 → buffer
+        const buffer = Buffer.from(file.split(",")[1], "base64");
 
-      const result = await upload.json();
+        const form = new FormData();
+        form.append("file", buffer, {
+            filename: "image.jpg",
+            contentType: "image/jpeg"
+        });
 
-      if (result.error) {
-        return res.status(500).json({ error: result.error });
-      }
+        const upload = await fetch("https://telegra.ph/upload", {
+            method: "POST",
+            body: form
+        });
 
-      const url = "https://telegra.ph" + result[0].src;
+        const result = await upload.json();
 
-      return res.status(200).json({ url });
+        if (result.error) return res.status(500).json(result);
 
-    } catch (e) {
-      return res.status(500).json({ error: "Upload failed", details: e.message });
+        return res.status(200).json({
+            url: "https://telegra.ph" + result[0].src
+        });
+
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
     }
-  });
 }
