@@ -1,59 +1,40 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
-<title>Telegraph Drag & Drop Uploader</title>
+<title>Telegraph Drag & Drop (Vercel)</title>
 
 <style>
-    body {
-        font-family: Arial, sans-serif;
-        padding: 20px;
-        background: #f4f4f4;
-    }
-
-    .dropzone {
-        width: 100%;
-        padding: 40px;
-        border: 3px dashed #888;
-        border-radius: 15px;
-        text-align: center;
-        background: white;
-        transition: 0.3s;
-        cursor: pointer;
-    }
-
-    .dropzone.hover {
-        border-color: #4CAF50;
-        background: #eaffea;
-    }
-
-    #resultURL {
-        width: 100%;
-        margin-top: 15px;
-        padding: 10px;
-        font-size: 15px;
-    }
-
-    #preview {
-        max-width: 300px;
-        margin-top: 15px;
-        display: none;
-        border-radius: 10px;
-    }
+.dropzone {
+    width: 100%;
+    padding: 40px;
+    border: 3px dashed #888;
+    border-radius: 15px;
+    background: #fff;
+    text-align: center;
+    cursor: pointer;
+    transition: 0.2s;
+}
+.dropzone.hover {
+    background: #e0ffe0;
+    border-color: #3bb33b;
+}
+#preview {
+    max-width: 300px;
+    margin-top: 20px;
+    display: none;
+}
 </style>
+
 </head>
 <body>
 
-<h2>Upload Gambar Drag & Drop → Telegra.ph</h2>
+<h2>Upload Gambar → Telegra.ph (Vercel)</h2>
 
-<div class="dropzone" id="dropzone">
-    Seret & lepaskan gambar di sini<br>atau klik untuk memilih
-</div>
-
+<div id="dropzone" class="dropzone">Drag & drop gambar di sini</div>
 <input type="file" id="fileInput" accept="image/*" style="display:none">
 
-<input id="resultURL" readonly placeholder="URL permanen akan muncul di sini">
-
+<input id="resultURL" readonly style="width:100%; margin-top:10px">
 <img id="preview">
 
 <script>
@@ -62,68 +43,43 @@ const fileInput = document.getElementById("fileInput");
 const resultURL = document.getElementById("resultURL");
 const preview = document.getElementById("preview");
 
-// Klik dropzone => buka file picker
-dropzone.addEventListener("click", () => fileInput.click());
+dropzone.onclick = () => fileInput.click();
 
-// Drag over efek
-dropzone.addEventListener("dragover", (e) => {
+dropzone.ondragover = e => {
     e.preventDefault();
     dropzone.classList.add("hover");
-});
+};
+dropzone.ondragleave = () => dropzone.classList.remove("hover");
 
-// Keluar drag area
-dropzone.addEventListener("dragleave", () => {
-    dropzone.classList.remove("hover");
-});
-
-// Drop file
-dropzone.addEventListener("drop", (e) => {
+dropzone.ondrop = e => {
     e.preventDefault();
     dropzone.classList.remove("hover");
+    uploadFile(e.dataTransfer.files[0]);
+};
 
-    const file = e.dataTransfer.files[0];
-    if (file) uploadToTelegraph(file);
-});
+fileInput.onchange = () => uploadFile(fileInput.files[0]);
 
-// Jika pilih manual dari input file
-fileInput.addEventListener("change", () => {
-    const file = fileInput.files[0];
-    if (file) uploadToTelegraph(file);
-});
+async function uploadFile(file) {
+    dropzone.innerHTML = "Uploading...";
 
-// Fungsi upload ke Telegra.ph
-async function uploadToTelegraph(file) {
     const formData = new FormData();
-    formData.append("file", file);
+    formData.append("image", file);
 
-    dropzone.innerHTML = "Uploading... ⏳";
+    const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData
+    });
 
-    try {
-        const upload = await fetch("https://telegra.ph/upload", {
-            method: "POST",
-            body: formData
-        });
+    const data = await res.json();
 
-        const result = await upload.json();
-
-        if (result.error) {
-            dropzone.innerHTML = "Upload gagal! Coba lagi.";
-            alert("Error: " + result.error);
-            return;
-        }
-
-        const url = "https://telegra.ph" + result[0].src;
-
-        resultURL.value = url;
-
-        preview.src = url;
+    if (data.url) {
+        resultURL.value = data.url;
+        preview.src = data.url;
         preview.style.display = "block";
-
-        dropzone.innerHTML = "Upload selesai! 🎉<br>Seret gambar lain di sini";
-
-    } catch (err) {
-        dropzone.innerHTML = "Upload error!";
-        alert("Gagal upload: " + err.message);
+        dropzone.innerHTML = "Upload selesai!";
+    } else {
+        alert("Error: " + data.error);
+        dropzone.innerHTML = "Upload gagal!";
     }
 }
 </script>
