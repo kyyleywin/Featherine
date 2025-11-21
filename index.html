@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Telegraph Drag & Drop Uploader</title>
+
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+        background: #f4f4f4;
+    }
+
+    .dropzone {
+        width: 100%;
+        padding: 40px;
+        border: 3px dashed #888;
+        border-radius: 15px;
+        text-align: center;
+        background: white;
+        transition: 0.3s;
+        cursor: pointer;
+    }
+
+    .dropzone.hover {
+        border-color: #4CAF50;
+        background: #eaffea;
+    }
+
+    #resultURL {
+        width: 100%;
+        margin-top: 15px;
+        padding: 10px;
+        font-size: 15px;
+    }
+
+    #preview {
+        max-width: 300px;
+        margin-top: 15px;
+        display: none;
+        border-radius: 10px;
+    }
+</style>
+</head>
+<body>
+
+<h2>Upload Gambar Drag & Drop → Telegra.ph</h2>
+
+<div class="dropzone" id="dropzone">
+    Seret & lepaskan gambar di sini<br>atau klik untuk memilih
+</div>
+
+<input type="file" id="fileInput" accept="image/*" style="display:none">
+
+<input id="resultURL" readonly placeholder="URL permanen akan muncul di sini">
+
+<img id="preview">
+
+<script>
+const dropzone = document.getElementById("dropzone");
+const fileInput = document.getElementById("fileInput");
+const resultURL = document.getElementById("resultURL");
+const preview = document.getElementById("preview");
+
+// Klik dropzone => buka file picker
+dropzone.addEventListener("click", () => fileInput.click());
+
+// Drag over efek
+dropzone.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    dropzone.classList.add("hover");
+});
+
+// Keluar drag area
+dropzone.addEventListener("dragleave", () => {
+    dropzone.classList.remove("hover");
+});
+
+// Drop file
+dropzone.addEventListener("drop", (e) => {
+    e.preventDefault();
+    dropzone.classList.remove("hover");
+
+    const file = e.dataTransfer.files[0];
+    if (file) uploadToTelegraph(file);
+});
+
+// Jika pilih manual dari input file
+fileInput.addEventListener("change", () => {
+    const file = fileInput.files[0];
+    if (file) uploadToTelegraph(file);
+});
+
+// Fungsi upload ke Telegra.ph
+async function uploadToTelegraph(file) {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    dropzone.innerHTML = "Uploading... ⏳";
+
+    try {
+        const upload = await fetch("https://telegra.ph/upload", {
+            method: "POST",
+            body: formData
+        });
+
+        const result = await upload.json();
+
+        if (result.error) {
+            dropzone.innerHTML = "Upload gagal! Coba lagi.";
+            alert("Error: " + result.error);
+            return;
+        }
+
+        const url = "https://telegra.ph" + result[0].src;
+
+        resultURL.value = url;
+
+        preview.src = url;
+        preview.style.display = "block";
+
+        dropzone.innerHTML = "Upload selesai! 🎉<br>Seret gambar lain di sini";
+
+    } catch (err) {
+        dropzone.innerHTML = "Upload error!";
+        alert("Gagal upload: " + err.message);
+    }
+}
+</script>
+
+</body>
+</html>
